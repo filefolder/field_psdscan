@@ -1,6 +1,6 @@
 
 """
-version 0.1
+version 0.11
 
 python3 script to quickly view the last N days of recovered data
 with the idea being to check the site is working OK before leaving
@@ -9,18 +9,20 @@ tested on windows, linux, and mac
 
 requires: obspy
 
+/path/to/sdcard should be the root directory! for a typical SD card this is the folder that contains STA01miniSEED/
+
 """
 
 import sys
 
 if len(sys.argv) < 2:
-	print("to run:  ./field_psdscan.py </path/to/sdcard> <inst type (default TC120_250)>")
+	print("to run:  ./field_psdscan.py </path/to/sdcard> <inst type (default TC120_100)>")
 	exit()
 
 
 ########set parameters here
 
-num_days_lookback = 4 #how many days before present to analyze 
+num_days_lookback = 3 #how many days to look at. the most recent will be taken. 
 #figdir = None
 figdir = "./field_psd_figs" #where to store figures (set to "" or None" if you don't want to save any)
 psd_len = 1800 #length of psd window (seconds). set to lower (e.g. 600 or 10 minutes) for quick lab testing
@@ -30,7 +32,7 @@ file_struct = '*.[DGCHBE]?[NEZ]' #filename matching template (currently set for 
 
 
 try: senstype = str(sys.argv[2]).upper()
-except: senstype = "T120_250"
+except: senstype = "T120_100"
 if 'TC' in senstype: senstype.replace('TC','T')
 
 #typical instrument/samplerates for ANSIR equipment (more combinations TBA)
@@ -89,7 +91,7 @@ if not os.path.isdir(outdir): os.mkdir(outdir)
 if not os.path.isdir(fyledir):
 	print("directory %s not found" % fyledir); exit()
 
-all_fyles = glob.glob(os.path.join(fyledir,'**/*.[BHCDG]?[NEZ]'),recursive=True)
+all_fyles = glob.glob(os.path.join(fyledir,'**/*'+file_struct),recursive=True)
 if len(all_fyles) == 0: all_fyles = glob.glob(os.path.join(fyledir,file_struct),recursive=True)
 if len(all_fyles) == 0: print("no files found in directory %s"  % fyledir); exit()
 
