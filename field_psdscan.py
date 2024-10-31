@@ -1,6 +1,6 @@
 
 """
-version 0.11
+version 0.12
 
 python3 script to quickly view the last N days of recovered data
 with the idea being to check the site is working OK before leaving
@@ -16,7 +16,7 @@ requires: obspy
 import sys
 
 if len(sys.argv) < 2:
-	print("to run:  ./field_psdscan.py </path/to/sdcard> <inst type (default TC120_100)>")
+	print("to run:  ./field_psdscan.py </path/to/sdcard> <inst type (default TC120)>")
 	exit()
 
 
@@ -32,37 +32,47 @@ file_struct = '*.[DGCHBE]?[NEZ]' #filename matching template (currently set for 
 
 
 try: senstype = str(sys.argv[2]).upper()
-except: senstype = "T120_100"
+except: senstype = "T120"
 if 'TC' in senstype: senstype.replace('TC','T')
+print("using PAZ for %s" % senstype)
 
-#typical instrument/samplerates for ANSIR equipment (more combinations TBA)
+#typical instrument/samplerates for ANSIR equipment
 response_dict = {
-	'3DL_100': {'poles':[(-0.03691+0.03702j),(-0.03691-0.03702j),(-343+0j),(-370+467j),(-370-467j),(-836+1522j),(-836-1522j),(-4900+4700j),(-4900-4700j),(-6900+0j),(-15000+0j)],
-			'zeros':[0j, 0j, (-392+0j), (-1960+0j), (-1490+1740j), (-1490-1740j)],
-			'gain':4.34493e+17,
-			'sensitivity': 7.543e+08},
-	'3DL_250': {'poles':[(-0.03691+0.03702j),(-0.03691-0.03702j),(-343+0j),(-370+467j),(-370-467j),(-836+1522j),(-836-1522j),(-4900+4700j),(-4900-4700j),(-6900+0j),(-15000+0j)],
-			'zeros':[0j, 0j, (-392+0j), (-1960+0j), (-1490+1740j), (-1490-1740j)],
-			'gain':4.34493e+17,
-			'sensitivity': 7.543e+08}, #TODO confirm these are the same but they should be
-	'T120_100': {'poles':[(-0.03691+0.03702j),(-0.03691-0.03702j), (-343+0j), (-370+467j), (-370-467j), (-836+1522j), (-836-1522j), (-4900+4700j), (-4900-4700j), (-6900+0j), (-15000+0j)],
+	'3DL': {'poles':[(-4.444+4.444j), (-4.444-4.444j), (-1.083+0j)],
+				'zeros':[0j, 0j, 0j],
+				'gain':1, # A0
+				'sensitivity': 400 * round(8589934592/4096) /1}, #overall sensitivity (400 V/m/s * logger gain * 5Vpp scaling)
+
+	'T120': {'poles':[(-0.03691+0.03702j),(-0.03691-0.03702j), (-343+0j), (-370+467j), (-370-467j), (-836+1522j), (-836-1522j), (-4900+4700j), (-4900-4700j), (-6900+0j), (-15000+0j)],
 				 'zeros':[0j, 0j, (-392+0j), (-1960+0j), (-1490+1740j), (-1490-1740j)],
-				 'gain':4.34493e+17, #e.g. A0
-				 'sensitivity': 7.543e+08}, #e.g. overall sensitivity
-	'T120_250': {'poles':[(-0.03691+0.03702j),(-0.03691-0.03702j), (-343+0j), (-370+467j), (-370-467j), (-836+1522j), (-836-1522j), (-4900+4700j), (-4900-4700j), (-6900+0j), (-15000+0j)],
-				 'zeros':[0j, 0j, (-392+0j), (-1960+0j), (-1490+1740j), (-1490-1740j)],
-				 'gain':4.34493e+17, #e.g. A0
-				 'sensitivity': 7.543e+08}, #e.g. overall sensitivity
-	'T20_250': {'poles':[(-0.2214+0.2221j), (-0.2214-0.2221j), (-343+0j), (-370+467j), (-370-467j), (-836+1522j), (-836-1522j), (-4900+4700j), (-4900-4700j), (-6900+0j), (-15000+0j)],
+				 'gain':4.34493e+17, # A0
+				 'sensitivity': 754.3*round(8589934592/4096) /4}, #e.g. overall sensitivity (754.3 V/m/s * logger gain * 20Vpp scaling
+	
+	'T20': {'poles':[(-0.2214+0.2221j), (-0.2214-0.2221j), (-343+0j), (-370+467j), (-370-467j), (-836+1522j), (-836-1522j), (-4900+4700j), (-4900-4700j), (-6900+0j), (-15000+0j)],
 				 'zeros':[0j, 0j, (-392+0j), (-1960+0j), (-1490+1740j), (-1490-1740j)],
 				 'gain':4.34493e+17,
-				 'sensitivity': 6.31726e+08}
+				 'sensitivity':754.3*round(8589934592/4096) /4 },
+	
+	'BD3C': {'poles':[(-1720.4+0j), (-1.2+0.9j), (-1.2-0.9j)], #broadband node.. insensitive to sample rate
+			'zeros':[(14164+0j), (-7162+0j), 0j, 0j],
+			'gain':1.69726e-05,
+			'sensitivity': 702651512.6046528},
+	
+	'16HR': {'poles':[(-22.211059+22.217768j), (-22.211059-22.217768j)], #shortperiod node.. insensitive to sample rate
+			'zeros':[0j, 0j],
+			'gain':1,
+			'sensitivity': 257019225.55108312},
+
+	'AUANU': {'poles':[(-0.148032-0.148032j), (-0.148032+0.148032j), (-391.955153+850.693025j), (-391.955153-850.693025j), (-2199.114858+0j), (-471.238898+0j)], #S1.AUANU at 100hz
+			'zeros':[0j, 0j],
+			'gain':9.12996e+11,
+			'sensitivity': 2489067360}
 }
+
 
 if senstype not in response_dict.keys():
 	print("instrument type/samplerate %s was not found! select from:   %s"  % (senstype,list(response_dict.keys())))
 	exit()
-
 
 
 from pathlib import Path,PureWindowsPath
@@ -83,9 +93,6 @@ if platform.system() == "Windows":
 	outdir = PureWindowsPath(outdir)
 	fyledir = PureWindowsPath(fyledir)
 
-	#mp.set_start_method('fork') #i think this is required for windows..
-#elif platform.system() in ['Darwin']:
-#	mp.set_start_method('spawn') # do not set this for OSX and the below mp code
 
 if not os.path.isdir(outdir): os.mkdir(outdir)
 if not os.path.isdir(fyledir):
